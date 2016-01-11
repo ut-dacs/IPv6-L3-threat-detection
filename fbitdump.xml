@@ -1,0 +1,1895 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:noNamespaceSchemaLocation="fbitdump.xsd">
+<!-- 
+	This is configuration XML for fbitdump utility
+	
+	The rules for printing columns are defined here. Each column has one column element which contains:
+		name: Name of the column
+		width: Width of the column, default is 0
+		alias: Alias(es) of the columns, used for operations and custom formatting
+		default-value: Defines what to show when table does not have this column
+		value: Defines where to get actual value
+			value can be of several types:
+				plain: just take specified element value for input. Value can be entered as fastbit 
+					   column name or 'alias' to plain type
+				operation: takes 'arg1' and 'arg2' and performs operation with name from attribute 'name', which
+							is one of '+', '-', '/', '*'
+							   Operation arguments can be only of plain and operation types and alias to plain type must be used
+							   Currently operations are working with integers up to uint64 (int64 is converted to uint64). 
+			elements under <value type="plain"> have attribute 'parts'. This specifies to how many columns in database
+				is this element splitted.  
+			elements under <value type="plain"> have attribute 'semantics'. There are several pre-defined
+				options to format ouput columns: as
+				'ipv4'   : expects uint32 column and prints it as IPv4 address
+				'ipv6'   : expects uint64 column and prints it as IPv6 address. 'parts' attribute must be set to 2 
+				'tmstmp64': expects uint64 column (miliseconds since 1970) and prints it as timestamp
+				'tmstmp32': expects uint32 column (seconds since 1970) and prints it as timestamp
+				'tcpflags' : expects uint8 column and print it as TCP flags
+				'protocol' : expects uint8 column and prints a name of corresponding IP protocol
+				'flows' : this is special column with no relation to the database. It is always computed as number of flows
+			elements under <value type="operation"> can also have attribute 'semantics'. Currently only following can be used:
+				'duration': formats miliseconds as seconds with precision 3.
+			elements under <value type="plain"> have attribute 'aggregation'. This determines how the columns is
+				aggregated. If attribute is empty, column is not aggregated. Supported values are: 'min', 'max', 'sum', 'avg', 'count'
+				
+				
+	Examples are shown below
+ -->
+<columns>
+	<column>
+		<name>v6 flow lbl</name>
+		<alias>%v6fl</alias>
+		<width>20</width>
+		<value type="plain">
+			<element>e0id31</element>
+		</value>
+	</column>
+	<column>
+		<name>v6f id</name>
+		<alias>%v6fragid</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e0id54</element>
+		</value>
+	</column>
+	<column>
+		<name>IPv6 fragment offset</name>
+		<alias>%v6fragoffset</alias>
+		<width>20</width>
+		<value type="plain">
+			<element>e0id88</element>
+		</value>
+	</column>
+	<column>
+		<name>v6 min-os</name>
+		<alias>%v6fragminoffset</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e785id406</element>
+		</value>
+	</column>
+	<column>
+		<name>IPv6 frag overlap</name>
+		<alias>%v6fragoverlap</alias>
+		<width>12</width>
+		<value type="plain">
+			<element>e785id401</element>
+		</value>
+	</column>
+	<column>
+		<name>IPv6 frag nxt</name>
+		<alias>%v6fragnxt</alias>
+		<width>10</width>
+		<value type="plain">
+			<element semantics='protocol'>e785id402</element>
+		</value>
+	</column>
+	<column>
+		<name>v6f nxt src</name>
+		<alias>%v6fragnxtsrc</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e785id403</element>
+		</value>
+	</column>
+	<column>
+		<name>v6f nxt dst</name>
+		<alias>%v6fragnxtdst</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e785id404</element>
+		</value>
+	</column>
+	<column>
+		<name>v6f nxt ow</name>
+		<alias>%v6fragnxtow</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e785id405</element>
+		</value>
+	</column>
+	<column>
+		<name>v6 TC</name>
+		<alias>%v6tc</alias>
+		<width>10</width>
+		<value type="plain">
+			<element>e785id5</element>
+		</value>
+	</column>
+	<column>
+		<name>Date flow start</name>
+		<alias>%ts</alias>
+		<width>23</width>
+		<value type="plain">
+			<element semantics="tmstmp64" aggregation="min">e0id152</element>
+		</value>
+	</column>
+	<column>
+		<name>Date flow end</name>
+		<alias>%te</alias>
+		<width>23</width>
+		<value type="plain">
+			<element semantics="tmstmp64" aggregation="max">e0id153</element>
+		</value>
+	</column>
+	<column>
+		<name>Date flow start</name>
+		<alias>%ts32</alias>
+		<width>23</width>
+		<value type="plain">
+			<element semantics="tmstmp32" aggregation="min">e0id150</element>
+		</value>
+	</column>
+	<column>
+		<name>Date flow end</name>
+		<alias>%te32</alias>
+		<width>23</width>
+		<value type="plain">
+			<element semantics="tmstmp32" aggregation="max">e0id151</element>
+		</value>
+	</column>
+	<column>
+		<name>Duration</name>
+		<alias>%td</alias>
+		<alias>%duration</alias>
+		<width>9</width>
+		<value type="operation">
+			<operation name="-" semantics="multiplier(0.001, 3)">
+				<arg1>%te</arg1>
+				<arg2>%ts</arg2>
+			</operation>
+		</value>
+	</column>
+	<column>
+		<name>Proto</name>
+		<alias>%pr</alias>
+		<alias>%proto</alias>
+		<width>10</width>
+		<value type="plain">
+			<element semantics="protocol">e0id4</element>
+		</value>
+	</column>
+	<column>
+		<name>Src IPv4</name>
+		<alias>%sa4</alias>
+		<alias>%srcip4</alias>
+		<width>16</width>
+		<value type="plain">
+			<element semantics="ipv4">e0id8</element>
+		</value>
+	</column>
+	<column>
+		<name>Src IPv6</name>
+		<alias>%sa6</alias>
+		<alias>%srcip6</alias>
+		<width>39</width>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e0id27</element>
+		</value>
+	</column>
+	<column>
+		<name>Dst IPv4</name>
+		<alias>%da4</alias>
+		<alias>%dstip4</alias>
+		<width>16</width>
+		<value type="plain">
+			<element semantics="ipv4">e0id12</element>
+		</value>
+	</column>
+	<column>
+		<name>Dst IPv6</name>
+		<alias>%da6</alias>
+		<alias>%dstip6</alias>
+		<width>39</width>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e0id28</element>
+		</value>
+	</column>
+	<column>
+		<name>sPort</name>
+		<alias>%sp</alias>
+		<alias>%srcport</alias>
+		<width>5</width>
+		<alignLeft/>
+		<default-value>0</default-value>
+		<value type="plain">
+			<element>e0id7</element>
+		</value>
+	</column>
+	<column>
+		<name>dPort</name>
+		<alias>%dp</alias>
+		<alias>%dstport</alias>
+		<width>5</width>
+		<alignLeft/>
+		<default-value>0</default-value>
+		<value type="plain">
+			<element>e0id11</element>
+		</value>
+	</column>
+	<column>
+		<name>ICMP type</name>
+		<alias>%icmptype</alias>
+		<width>9</width>
+		<default-value>0</default-value>
+		<value type="plain">
+			<element>e0id32</element>
+		</value>
+	</column>
+	<column>
+		<name>Flags</name>
+		<alias>%flg</alias>
+		<width>6</width>
+		<default-value>......</default-value>
+		<value type="plain">
+			<element semantics="tcpflags">e0id6</element>
+		</value>
+	</column>
+	<column>
+		<name>Tos</name>
+		<alias>%tos</alias>
+		<width>4</width>
+		<default-value>0</default-value>
+		<value type="plain">
+			<element>e0id5</element>
+		</value>
+	</column>
+	<column>
+		<name>Packets</name>
+		<alias>%pkt</alias>
+		<width>7</width>
+		<value type="plain">
+			<element aggregation="sum">e0id2</element>
+		</value>
+	</column>
+	<column>
+		<name>Bytes</name>
+		<alias>%byt</alias>
+		<width>8</width>
+		<value type="plain">
+			<element aggregation="sum">e0id1</element>
+		</value>
+	</column>
+	<column>
+		<name>pps</name>
+		<alias>%pps</alias>
+		<width>8</width>
+		<value type="operation">
+			<operation name="/">
+				<arg1>%pkt</arg1>
+				<arg2>%td</arg2>
+			</operation>
+		</value>
+	</column>
+	<column>
+		<name>bps</name>
+		<alias>%bps</alias>
+		<width>8</width>
+		<value type="operation">
+			<operation name="/">
+				<arg1>%byt</arg1>
+				<arg2>%td</arg2>
+			</operation>
+		</value>
+	</column>
+	<column>
+		<name>Bpp</name>
+		<alias>%bpp</alias>
+		<width>8</width>
+		<value type="operation">
+			<operation name="/">
+				<arg1>%byt</arg1>
+				<arg2>%pkt</arg2>
+			</operation>
+		</value>
+	</column>
+	<column>
+		<name>Src AS</name>
+		<alias>%sas</alias>
+		<width>8</width>
+		<value type='plain'>
+			<element>e0id16</element>
+		</value>
+	</column>
+	<column>
+		<name>Dst AS</name>
+		<alias>%das</alias>
+		<width>8</width>
+		<value type='plain'>
+			<element>e0id17</element>
+		</value>
+	</column>
+	<column>
+		<name>ip Ver.</name>
+		<alias>%ipv</alias>
+		<width>7</width>
+		<value type="plain">
+			<element>e0id60</element>
+		</value>
+	</column>
+	<column>
+		<name>applicationID</name>
+		<alias>%applicationid</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e0id95</element>
+		</value>
+	</column>
+	<column>
+		<name>Input</name>
+		<alias>%in</alias>
+		<width>8</width>
+		<value type='plain'>
+			<element>e0id10</element>
+		</value>
+	</column>
+	<column>
+		<name>Output</name>
+		<alias>%out</alias>
+		<width>8</width>
+		<value type='plain'>
+			<element>e0id14</element>
+		</value>
+	</column>
+	<column>
+		<name>Flows</name>
+		<alias>%fl</alias>
+		<width>5</width>
+		<default-value>1</default-value>
+		<value type="plain">
+			<element semantics="flows" aggregation="count"></element>
+		</value>
+	</column>
+	<column>
+		<name>If. Description</name>
+		<alias>%ifdesc</alias>
+		<width>15</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e0id83</element>
+		</value>
+	</column>
+	<column>
+		<name>VLAN</name>
+		<alias>%vlan</alias>
+		<width>4</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e0id58</element>
+		</value>
+	</column>
+	<column>
+		<name>Frag ID</name>
+		<alias>%fragid</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e0id54</element>
+		</value>
+	</column>
+	<column>
+		<name>Exporter IPv4</name>
+		<alias>%eip4</alias>
+		<width>12</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="ipv4">e0id403</element>
+		</value>
+	</column>
+	<column>
+		<name>Exporter IPv6</name>
+		<alias>%eip6</alias>
+		<width>20</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e0id404</element>
+		</value>
+	</column>
+	<column>
+		<name>ODID</name>
+		<alias>%odid</alias>
+		<width>4</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e0id405</element>
+		</value>
+	</column>
+	<column>
+		<name>sGeo</name>
+		<alias>%sgeo</alias>
+		<width>4</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id0</element>
+		</value>
+	</column>
+	<column>
+		<name>dGeo</name>
+		<alias>%dgeo</alias>
+		<width>4</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id1</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP UA</name>
+		<alias>%httpua</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id100</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Method</name>
+		<alias>%httpm</alias>
+		<width>11</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id101</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Dom.</name>
+		<alias>%httpd</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id102</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Ref.</name>
+		<alias>%httpr</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id103</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP CT</name>
+		<alias>%httpct</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id104</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Url</name>
+		<alias>%httpurl</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id105</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP ST</name>
+		<alias>%httpst</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id106</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP HC</name>
+		<alias>%httphc</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id107</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN Src IPv6</name>
+		<alias>%tunsa6</alias>
+		<alias>%tunsrcip6</alias>
+		<width>39</width>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e16982id400</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN Dst IPv6</name>
+		<alias>%tunda6</alias>
+		<alias>%tundstip6</alias>
+		<width>39</width>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e16982id401</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN sp</name>
+		<alias>%tunsp</alias>
+		<alias>%tunsrcport</alias>
+		<width>6</width>
+		<alignLeft/>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id402</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN dp</name>
+		<alias>%tundp</alias>
+		<alias>%tundstport</alias>
+		<width>6</width>
+		<alignLeft/>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id403</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN Proto</name>
+		<alias>%tunpr</alias>
+		<alias>%tunproto</alias>
+		<width>10</width>
+		<value type="plain">
+			<element semantics="protocol">e16982id404</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN Type</name>
+		<alias>%tuntype</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e16982id405</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN TCP fl</name>
+		<alias>%tunflags</alias>
+		<width>10</width>
+		<value type="plain">
+			<element semantics="tcpflags">e16982id406</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN ICMP</name>
+		<alias>%tunicmp</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e16982id407</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN hdrs</name>
+		<alias>%tunhdrs</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e16982id408</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN trls</name>
+		<alias>%tuntrls</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e16982id409</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN sCtry</name>
+		<alias>%tunsctry</alias>
+		<width>9</width>
+		<value type="plain">
+			<element>e16982id410</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN dCtry</name>
+		<alias>%tundctry</alias>
+		<width>9</width>
+		<value type="plain">
+			<element>e16982id411</element>
+		</value>
+	</column>
+	<column>
+		<name>sCtry</name>
+		<alias>%tunosctry</alias>
+		<width>5</width>
+		<value type="plain">
+			<element>e16982id412</element>
+		</value>
+	</column>
+	<column>
+		<name>dCtry</name>
+		<alias>%tunodctry</alias>
+		<width>5</width>
+		<value type="plain">
+			<element>e16982id413</element>
+		</value>
+	</column>
+	<column>
+		<name>TUN HOP</name>
+		<alias>%tunhop</alias>
+		<width>7</width>
+		<value type="plain">
+			<element>e16982id414</element>
+		</value>
+	</column>
+	<column>
+		<name>TTL</name>
+		<alias>%ttl</alias>
+		<width>3</width>
+		<value type="plain">
+			<element>e0id192</element>
+		</value>
+	</column>
+
+	<column>
+		<name>App PID</name>
+		<alias>%apppid</alias>
+		<width>7</width>
+		<value type="plain">
+			<element>e16982id200</element>
+		</value>
+	</column>
+	<column>
+		<name>App Name</name>
+		<alias>%appname</alias>
+		<width>8</width>
+		<value type="plain">
+			<element>e16982id201</element>
+		</value>
+	</column>
+	<column>
+		<name>App UID</name>
+		<alias>%appuid</alias>
+		<width>7</width>
+		<value type="plain">
+			<element>e16982id202</element>
+		</value>
+	</column>
+	<column>
+		<name>App Match</name>
+		<alias>%appmatch</alias>
+		<width>9</width>
+		<value type="plain">
+			<element>e16982id203</element>
+		</value>
+	</column>
+
+	<column>
+		<name>HTTP RT</name>
+		<alias>%httprt</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="httprt">e16982id500</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Host</name>
+		<alias>%httph</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id501</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Path</name>
+		<alias>%httpp</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id502</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP AgentID</name>
+		<alias>%httpaid</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id503</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Agent</name>
+		<alias>%httpa</alias>
+		<width>48</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id504</element>
+		</value>
+	</column>
+
+	<column>
+		<name>HTTP Ref</name>
+		<alias>%ihttpref</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id3</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Code</name>
+		<alias>%ihttpc</alias>
+		<width>15</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="http_status_code">e39499id12</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Type</name>
+		<alias>%ihttpt</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id10</element>
+		</value>
+	</column>
+
+	<column>
+		<name>HTTP RT</name>
+		<alias>%ihttprt</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="httprt">e39499id4</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Host</name>
+		<alias>%ihttph</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id1</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Path</name>
+		<alias>%ihttpp</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id2</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP AgentID</name>
+		<alias>%ihttpaid</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id21</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Agent</name>
+		<alias>%ihttpa</alias>
+		<width>48</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id20</element>
+		</value>
+	</column>
+
+	<column>
+		<name>HTTP Ref</name>
+		<alias>%httpref</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id505</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Code</name>
+		<alias>%httpc</alias>
+		<width>15</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="http_status_code">e16982id506</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Type</name>
+		<alias>%httpt</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id507</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Time</name>
+		<alias>%httpti</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id508</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS Ans</name>
+		<alias>%dnsans</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id0</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS RCode</name>
+		<alias>%dnsrcode</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="dns_rcode" >e8057id1</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS Name</name>
+		<alias>%dnsname</alias>
+		<width>20</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id2</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS QType</name>
+		<alias>%dnsqtype</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id3</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS Class</name>
+		<alias>%dnsclass</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id4</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS RR TTL</name>
+		<alias>%dnsrrttl</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id5</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS RLen</name>
+		<alias>%dnsrlen</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id6</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS RData</name>
+		<alias>%dnsrdata</alias>
+		<width>30</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id7</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS PSize</name>
+		<alias>%dnspsize</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id8</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS DNSSEC</name>
+		<alias>%dnsdo</alias>
+		<width>12</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id9</element>
+		</value>
+	</column>
+	<column>
+		<name>DNS ID</name>
+		<alias>%dnsid</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id10</element>
+		</value>
+	</column>
+
+	<column>
+		<name>TCP RTT</name>
+		<alias>%tcprtt</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id600</element>
+		</value>
+	</column>
+	<column>
+		<name>TCP SRT</name>
+		<alias>%tcpsrt</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id601</element>
+		</value>
+	</column>
+	<column>
+		<name>TCP CRT</name>
+		<alias>%tcpcrt</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id602</element>
+		</value>
+	</column>
+	<column>
+		<name>Jitter dev</name>
+		<alias>%jitterdev</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id603</element>
+		</value>
+	</column>
+	<column>
+		<name>Jitter avg</name>
+		<alias>%jitteravg</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id604</element>
+		</value>
+	</column>
+	<column>
+		<name>Jitter min</name>
+		<alias>%jittermin</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id605</element>
+		</value>
+	</column>
+	<column>
+		<name>Jitter max</name>
+		<alias>%jittermax</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id606</element>
+		</value>
+	</column>
+	<column>
+		<name>Delay dev</name>
+		<alias>%delaydev</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id607</element>
+		</value>
+	</column>
+	<column>
+		<name>Delay avg</name>
+		<alias>%delayavg</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id608</element>
+		</value>
+	</column>
+	<column>
+		<name>Delay min</name>
+		<alias>%delaymin</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id609</element>
+		</value>
+	</column>
+	<column>
+		<name>Delay max</name>
+		<alias>%delaymax</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id610</element>
+		</value>
+	</column>
+	<column>
+		<name>SYN size</name>
+		<alias>%synsize</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id700</element>
+		</value>
+	</column>
+	<column>
+		<name>TCP win</name>
+		<alias>%winsize</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e16982id701</element>
+		</value>
+	</column>
+	<column>
+		<name>TLS Client Version</name>
+		<alias>%cversion</alias>
+		<width>27</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tls_version">e16982id800</element>
+		</value>
+	</column>
+	<column>
+		<name>TLS Server Version</name>
+		<alias>%sversion</alias>
+		<width>20</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tls_version">e16982id801</element>
+		</value>
+	</column>
+	<column>
+		<name>Cipher Suite Used</name>
+		<alias>%cips</alias>
+		<width>37</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tls_csuites">e16982id802</element>
+		</value>
+	</column>
+	<column>
+		<name>Client Cipher Suites</name>
+		<alias>%clsuites</alias>
+		<width>100</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tls_csuites_array">e16982id803</element>
+		</value>
+	</column>
+	<column>
+		<name>Certificate Subject</name>
+		<alias>%subj</alias>
+		<width>76</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id804</element>
+		</value>
+	</column>
+	<column>
+		<name>Certificate Issuer</name>
+		<alias>%issuer</alias>
+		<width>55</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id805</element>
+		</value>
+	</column>
+	<column>
+		<name>Cert Not Before</name>
+		<alias>%notbf</alias>
+		<width>23</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tmstmp32">e16982id806</element>
+		</value>
+	</column>
+	<column>
+		<name>Cert Not After</name>
+		<alias>%notaft</alias>
+		<width>23</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element semantics="tmstmp32">e16982id807</element>
+		</value>
+	</column>
+	<column>
+		<name>Key Length</name>
+		<alias>%pkeylen</alias>
+		<width>15</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id808</element>
+		</value>
+	</column>
+	<column>
+		<name>Key Exponent</name>
+		<alias>%pkeyexp</alias>
+		<width>15</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id809</element>
+		</value>
+	</column>
+	<column>
+		<name>Signature Algorithm</name>
+		<alias>%sigalgo</alias>
+		<width>23</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id810</element>
+		</value>
+	</column>
+	<column>
+		<name>Server Name</name>
+		<alias>%sni</alias>
+		<width>80</width>
+		<default-value>---</default-value>
+		<value type="plain">
+			<element>e16982id811</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Method</name>
+		<alias>%chttpm</alias>
+		<width>7</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="httprt">e8057id800</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Host</name>
+		<alias>%chttph</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id801</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP URL</name>
+		<alias>%chttpu</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id802</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Referer</name>
+		<alias>%chttpr</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id803</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP User Agent</name>
+		<alias>%chttpa</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id804</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Status Code</name>
+		<alias>%chttpc</alias>
+		<width>15</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="http_status_code">e8057id805</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Content Type</name>
+		<alias>%chttpt</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id806</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTP Response Time</name>
+		<alias>%chttpr</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id807</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTPS (SNI) Host</name>
+		<alias>%chttpsh</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id808</element>
+		</value>
+	</column>
+	<column>
+		<name>HTTPS Response Time</name>
+		<alias>%chttpsr</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id809</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP Commands</name>
+		<alias>%smtpcf</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="smtp_command">e8057id810</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP MAIL Count</name>
+		<alias>%smtpmc</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id811</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP RCPT Count </name>
+		<alias>%smtprc</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id812</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP Sender</name>
+		<alias>%smtps</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id813</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP Recipient</name>
+		<alias>%smtpr</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id814</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP Status Codes</name>
+		<alias>%smtpsf</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="smtp_statuscode">e8057id815</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP 2XX Codes Count </name>
+		<alias>%smtp2c</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id816</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP 3XX Codes Count</name>
+		<alias>%smtp3c</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id817</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP 4XX Codes Count</name>
+		<alias>%smtp4c</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id818</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP 5XX Codes Count</name>
+		<alias>%smtp5c</alias>
+		<width>8</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id819</element>
+		</value>
+	</column>
+	<column>
+		<name>SMTP Domain</name>
+		<alias>%smtpd</alias>
+		<width>32</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id820</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Method</name>
+		<alias>%csipm</alias>
+		<width>9</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="sip_method">e8057id830</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Status Code</name>
+		<alias>%csips</alias>
+		<width>3</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id831</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Request URI</name>
+		<alias>%csipu</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id832</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP From</name>
+		<alias>%csipf</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id833</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP To</name>
+		<alias>%csipt</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id834</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Contact</name>
+		<alias>%csipc</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id835</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Via</name>
+		<alias>%csipv</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id836</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Route</name>
+		<alias>%csipr</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id837</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP Record Route</name>
+		<alias>%csiprr</alias>
+		<width>64</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e8057id838</element>
+		</value>
+	</column>
+
+<!-- Added for VOIP plugin support by Jan Remes -->
+	<column>
+		<name>VOIP packet type</name>
+		<alias>%voiptype</alias>
+		<width>1</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="voip_type">e39499id32</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP call id</name>
+		<alias>%sipcallid</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id33</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP calling party</name>
+		<alias>%sipcalling</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id34</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP called party</name>
+		<alias>%sipcalled</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id35</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP via</name>
+		<alias>%sipvia</alias>
+		<width>10</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id36</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP invite/ringing</name>
+		<alias>%sipinvite</alias>
+		<width>23</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="tmstmp64">e39499id37</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP ok time</name>
+		<alias>%sipok</alias>
+		<width>23</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="tmstmp64">e39499id38</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP bye time</name>
+		<alias>%sipbye</alias>
+		<width>23</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="tmstmp64">e39499id39</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP RTP IP4</name>
+		<alias>%siprtpip4</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="ipv4">e39499id40</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP RTP IP6</name>
+		<alias>%siprtpip6</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="ipv6" parts="2">e39499id41</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP RTP audio port</name>
+		<alias>%siprtpaudio</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id42</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP RTP video port</name>
+		<alias>%siprtpvideo</alias>
+		<width>6</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id43</element>
+		</value>
+	</column>
+	<column>
+		<name>SIP stats</name>
+		<alias>%sipstats</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id44</element>
+		</value>
+	</column>
+	<column>
+		<name>RTP codec</name>
+		<alias>%rtpcodec</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element semantics="voip_rtpcodec">e39499id45</element>
+		</value>
+	</column>
+	<column>
+		<name>RTP jitter</name>
+		<alias>%rtpjitter</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id46</element>
+		</value>
+	</column>
+	<column>
+		<name>RTCP lost</name>
+		<alias>%rtcplost</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id47</element>
+		</value>
+	</column>
+	<column>
+		<name>RTCP packets</name>
+		<alias>%rtcppackets</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id48</element>
+		</value>
+	</column>
+	<column>
+		<name>RTCP octets</name>
+		<alias>%rtcpoctets</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id49</element>
+		</value>
+	</column>
+	<column>
+		<name>RTCP source count</name>
+		<alias>%rtcpsrccnt</alias>
+		<width>18</width>
+		<default-value>-</default-value>
+		<value type="plain">
+			<element>e39499id50</element>
+		</value>
+	</column>
+	<column>
+		<name>Src MAC</name>
+		<alias>%smac</alias>
+		<width>18</width>
+		<value type="plain">
+			<element semantics="mac">e0id56</element>
+		</value>
+	</column>
+	<column>
+		<name>Dst MAC</name>
+		<alias>%dmac</alias>
+		<width>18</width>
+		<value type="plain">
+			<element semantics="mac">e0id80</element>
+		</value>
+	</column>
+</columns>
+
+<groups>
+	<group>
+		<name>Port</name>
+		<alias>%port</alias>
+		<members>
+			<member>%dp</member>
+			<member>%sp</member>
+		</members>
+	</group>
+	<group>
+		<name>IPv6 address</name>
+		<alias>%ip6</alias>
+		<members>
+			<member>%sa6</member>
+			<member>%da6</member>
+		</members>
+	</group>
+</groups>
+
+<!-- summary section contain aliases of columns that can be used for statistics summary, i.e. totals
+	only plain columns can be used -->
+<summary>
+	<column type="sum">%pkt</column>
+	<column type="sum">%byt</column>
+	<column type="sum">%fl</column>
+</summary>
+
+<!-- definition of output formats that can be used with -o option -->
+<output>
+	<format>
+		<formatName>lh6</formatName>
+		<formatString>%ts %td %pr %sp -> %dp %sa6 -> %da6 %flg %v6fragoverlap %v6fl %v6tc %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>frag6</formatName>
+		<formatString>%ts %td %v6fragnxt %v6fragid %v6tc %sa6:%v6fragnxtsrc -> %da6:%v6fragnxtdst %v6fragminoffset %v6fragnxtow %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>line</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %sa6:%sp -> %da6:%dp %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>long</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %sa6:%sp -> %da6:%dp %flg %tos %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>extended</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %sa6:%sp -> %da6:%dp %flg %tos %pkt %byt %bps %pps %bpp %fl</formatString>
+	</format>
+	<format>
+		<formatName>pipe</formatName>
+		<formatString>%ts|%td|%pr|%sa4|%sp|%da4|%dp|%pkt|%byt|%fl</formatString>
+	</format>
+	<format>
+		<formatName>csv</formatName>
+		<formatString>%ts,%td,%pr,%sa4,%sp,%da4,%dp,%pkt,%byt,%fl</formatString>
+	</format>
+	<format>
+		<formatName>extra</formatName>
+		<formatString>%ts %td %pr %sa4 -> %da4 %sa6 -> %da6 %sp %dp %flg %tos %pkt %byt %bps %pps %bpp %icmptype %sas %das %in %out %fragid %fl</formatString>
+	</format>
+	<format>
+		<formatName>line4</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>long4</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %flg %tos %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>extended4</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %flg %tos %pkt %byt %bps %pps %bpp %fl</formatString>
+	</format>
+	<format>
+		<formatName>extra4</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %flg %tos %pkt %byt %bps %pps %bpp %icmptype %sas %das %in %out %fragid %fl</formatString>
+	</format>
+	<format>
+		<formatName>line6</formatName>
+		<formatString>%ts %td %pr %sa6:%sp -> %da6:%dp %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>long6</formatName>
+		<formatString>%ts %td %pr %sa6:%sp -> %da6:%dp %flg %tos %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>extended6</formatName>
+		<formatString>%ts %td %pr %sa6:%sp -> %da6:%dp %flg %tos %pkt %byt %bps %pps %bpp %fl</formatString>
+	</format>
+	<format>
+		<formatName>extra6</formatName>
+		<formatString>%ts %td %pr %sa6:%sp -> %da6:%dp %flg %tos %pkt %byt %bps %pps %bpp %icmptype %sas %das %in %out %fragid %fl</formatString>
+	</format>
+	<format>
+		<formatName>http</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %sa6 %da6 %flg %pkt %byt %fl %httpua %httpm %httpd %httpurl %httpr %httpct %httpst %httphc</formatString>
+	</format>
+	<format>
+		<formatName>http4</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %flg %pkt %byt %fl %httpua %httpm %httpd %httpurl %httpr %httpct %httpst %httphc</formatString>
+	</format>
+	<format>
+		<formatName>tun</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %flg %pkt %byt %fl %tunsa6:%tunsp -> %tunda6:%tundp %tunproto %tuntype %tunflags %tunicmp %tunhdrs %tuntrls %tunsctry %tundctry %tunosctry %tunodctry %tunhop %ttl</formatString>
+	</format>
+	<format>
+		<formatName>tun2</formatName>
+		<formatString>%ts;%td;%pr;%sa4;%sp;%da4;%dp;%flg;%pkt;%byt;%fl;%tunsa6;%tunsp;%tunda6;%tundp;%tunproto;%tuntype;%tunflags;%tunicmp;%tunhdrs;%tuntrls;%tunsctry;%tundctry;%tunosctry;%tunodctry;%tunhop;%ttl</formatString>
+	</format>
+
+	<format>
+		<formatName>app</formatName>
+		<formatString>%ts %td %pr %sa4:%sp -> %da4:%dp %flg %pkt %byt %fl %appname %apppid %appuid %appmatch</formatString>
+	</format>
+	<format>
+		<formatName>http4-all</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %httpua %httpm %httpd %httpurl %httpr %httpct %httpst %httphc %httprt %httph %httpp %httpa %httpref %httpc %httpt</formatString>
+	</format>
+	<format>
+		<formatName>http4-invea</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %httprt %httph %httpp %httpref %httpc %httpt %httpa</formatString>
+	</format>
+	<format>
+		<formatName>dns4</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %dnsans %dnsrcode %dnsname %dnsqtype %dnsclass %dnsrrttl %dnsdo %dnspsize %dnsid %dnsrlen %dnsrdata</formatString>
+	</format>
+	<format>
+		<formatName>ihttp4-invea</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %ihttprt %ihttph %ihttpp %ihttpref %ihttpc %ihttpt %ihttpa</formatString>
+	</format>
+	<format>
+		<formatName>perf</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %tcprtt %tcpsrt %tcpcrt %jitterdev %jitteravg %jittermin %jittermax %delaydev %delayavg %delaymin %delaymax</formatString>
+	</format>
+	<format>
+		<formatName>tls</formatName>
+		<formatString>%ts %sp %dp %sa4 %da4 %cversion %sversion %cips</formatString>
+	</format>
+	<format>
+		<formatName>tls_aggr</formatName>
+		<formatString>%ts %sversion %cversion %cips %pkeylen %pkeyexp %sni %sigalgo %pkt %byt %fl</formatString>
+	</format>
+	<format>
+		<formatName>sni</formatName>
+		<formatString>%sa4 %da4 %cversion %sversion %sni</formatString>
+	</format>
+	<format>
+		<formatName>clsuites</formatName>
+		<formatString>%cversion %sversion %clsuites</formatString>
+	</format>
+	<format>
+		<formatName>cert_validity</formatName>
+		<formatString>%sa4 %da4 %sversion %notbf %notaft %pkeylen %pkeyexp %sigalgo</formatString>
+	</format>
+	<format>
+		<formatName>cert_info</formatName>
+		<formatString>%sa4 %da4 %subj %issuer</formatString>
+	</format>
+	<format>
+		<formatName>osdet</formatName>
+		<formatString>%sa4 %da4 %ttl %synsize %winsize %ttlos %synos %winos</formatString>
+	</format>
+	<format>
+		<formatName>http4-cesnet</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %chttpm %chttph %chttpu %chttpr %chttpa %chttpc %chttpt %chttpr</formatString>
+	</format>
+	<format>
+		<formatName>https4-cesnet</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %chttpsh %chttpsr</formatString>
+	</format>
+	<format>
+		<formatName>smtp4</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %smtpcf %smtpmc %smtprc %smtps %smtpr %smtpsf %smtp2c %smtp3c %smtp4c %smtp5c %smtpd</formatString>
+	</format>
+	<format>
+		<formatName>smtp6</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa6 %da6 %pkt %byt %fl %smtpcf %smtpmc %smtprc %smtps %smtpr %smtpsf %smtp2c %smtp3c %smtp4c %smtp5c %smtpd</formatString>
+	</format>
+	<format>
+		<formatName>sip4-cesnet</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %pkt %byt %fl %csipm %csipc %csipu %csipf %csipt %csipc %csipv %csipr %csiprr</formatString>
+	</format>
+	<format>
+		<formatName>voip</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %voiptype %sipcallid %sipcalling %sipcalled %sipvia %sipinvite %sipok %sipbye %siprtpip4 %siprtpip6 %siprtpaudio %siprtpvideo %sipstats %rtpcodec %rtpjitter %rtcplost %rtcppackets %rtcpsrccnt</formatString>
+	</format>
+	<format>
+		<formatName>voip6</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa6 %da6 %voiptype %sipcallid %sipcalling %sipcalled %sipvia %sipinvite %sipok %sipbye %siprtpip4 %siprtpip6 %siprtpaudio %siprtpvideo %sipstats %rtpcodec %rtpjitter %rtcplost %rtcppackets %rtcpsrccnt</formatString>
+	</format>
+	<format>
+		<formatName>sip</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %voiptype %sipcallid %sipcalling %sipcalled %sipvia %sipinvite %sipok %sipbye %siprtpip4 %siprtpip6 %siprtpaudio %siprtpvideo %sipstats</formatString>
+	</format>
+	<format>
+		<formatName>sip6</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa6 %da6 %voiptype %sipcallid %sipcalling %sipcalled %sipvia %sipinvite %sipok %sipbye %siprtpip4 %siprtpip6 %siprtpaudio %siprtpvideo %sipstats</formatString>
+	</format>
+	<format>
+		<formatName>rtp</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa4 %da4 %voiptype %rtpcodec %rtpjitter %rtcplost %rtcppackets %rtcpsrccnt</formatString>
+	</format>
+	<format>
+		<formatName>rtp6</formatName>
+		<formatString>%ts %td %pr %sp %dp %sa6 %da6 %voiptype %rtpcodec %rtpjitter %rtcplost %rtcppackets %rtcpsrccnt</formatString>
+	</format>
+</output>
+<plugins>
+	<plugin>
+		<name>httprt</name>
+		<path>/usr/local/share/fbitdump/plugins/httprt.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>http_status_code</name>
+		<path>/usr/local/share/fbitdump/plugins/http_status_code.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>sip_method</name>
+		<path>/usr/local/share/fbitdump/plugins/sip_method.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>dns_rcode</name>
+		<path>/usr/local/share/fbitdump/plugins/dns_rcode.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>tls_version</name>
+		<path>/usr/local/share/fbitdump/plugins/tls_version.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>tls_csuites</name>
+		<path>/usr/local/share/fbitdump/plugins/tls_csuites.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>tls_csuites_array</name>
+		<path>/usr/local/share/fbitdump/plugins/tls_csuites_array.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>voip_type</name>
+		<path>/usr/local/share/fbitdump/plugins/voip_type.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>voip_rtpcodec</name>
+		<path>/usr/local/share/fbitdump/plugins/voip_rtpcodec.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>smtp_statuscode</name>
+		<path>/usr/local/share/fbitdump/plugins/smtp_statuscode.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>smtp_command</name>
+		<path>/usr/local/share/fbitdump/plugins/smtp_command.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>mac</name>
+		<path>/usr/local/share/fbitdump/plugins/mac.so</path>
+		<plainLevel>1</plainLevel>
+	</plugin>
+	<plugin>
+		<name>multiplier</name>
+		<path>/usr/local/share/fbitdump/plugins/multiplier.so</path>
+		<plainLevel>10</plainLevel>
+	</plugin>
+</plugins>
+</configuration>
