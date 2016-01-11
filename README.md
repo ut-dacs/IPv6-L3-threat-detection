@@ -3,7 +3,7 @@
 Search for network level threats in flow data:
 
 
-'''
+```
 Usage: detect.rb [options]
     -R, --read DIR                   Specify input directory to read from (fbitdump style)
     -s, --syn-only                   Check for SYN-only flows, i.e. scanning threats
@@ -16,4 +16,4 @@ Usage: detect.rb [options]
         --hopopt-flood               Check for flooding based on IPv6 Hop-by-Hop Options
         --frag-overlap               Check for overlapping fragments
     -h, --help                       Prints this help
-'''
+```
