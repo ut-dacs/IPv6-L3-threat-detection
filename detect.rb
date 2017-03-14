@@ -83,47 +83,34 @@ if options[:icmp]
 end
 
 
-# Related to "Towards Network Layer Threat Detection in IPv6" paper:
+# Related to "Flow-based Detection of IPv6-specific Network Layer Attacks" paper:
 
 if options[:ccfl]
-    extra_element = '%v6fl'
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}'  -A'%sa6,%da6,%srcport,%dstport,%proto' -m%flDESC -c100 -o'fmt:%sa6 %da6 %srcport %dstport %proto %fl' 'not %proto IPv6-Frag' )
-    output2 = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}'  -A'%sa6,%da6,%srcport,%dstport,%proto,#{extra_element}' -m%flDESC -c100  -o'fmt:%sa6 %da6 %srcport %dstport %proto %fl' 'not %proto IPv6-Frag')
+    extra_element =  '%v6fl'
+    output_format =  "fmt:%sa6 %da6 %srcport %dstport %proto %fl %pkt"
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}'  -o'#{output_format}' '%pkt 1 and %v6fl > 0 and not %proto IPv6-Frag' -P'%pkt >= 50' -A'%sa6,%da6,%srcport,%dstport,%proto')
+    output.lines.each do |line|
+        (sa6, da6, sp, dp, pr, fl) = line.split
+        output2 = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}'  -A'%sa6,%da6,%srcport,%dstport,%proto,#{extra_element}' -N1 -o'#{output_format} #{extra_element}' '%sa6 #{sa6} and %da6 #{da6} and %srcport #{sp} and %dstport #{dp} and %proto #{pr}')
 
-    if output != output2
-        flowkey_5t = Hash.new
-        output.lines.each do |line|
-            (sa6, da6, sp, dp, pr, fl) = line.split
-            flowkey_5t[[sa6, da6, sp, dp, pr]] = fl
-        end
-        flowkey_5t_fl = Hash.new
-        output2.lines.each do |line|
-            (sa6, da6, sp, dp, pr, fl) = line.split
-            flowkey_5t_fl[[sa6, da6, sp, dp, pr]] = fl
-        end
-        diff = flowkey_5t.keys - flowkey_5t_fl.keys
-        intersect = flowkey_5t.keys & flowkey_5t_fl.keys
-        unless diff.empty?
-            diff.each do |k|
-                puts "#{k[0]} -> #{k[1]} , #{flowkey_5t[k]}" if flowkey_5t[k].to_i > 50
-            end
-        end
-        intersect.each do |k|
-            if flowkey_5t[k] != flowkey_5t_fl[k]
-                puts "#{k[0]} -> #{k[1]} , #{flowkey_5t[k]} vs #{flowkey_5t_fl[k]}" if (flowkey_5t[k].to_i - flowkey_5t_fl[k].to_i).abs > 10
-            end
+        if output2.lines.length > 10
+            puts "CCFL #{sa6} -> #{da6} #{fl} vs #{output2.lines.length}"
+            puts output2.lines
+            puts "-"*20
         end
     end
+
+
 end
 
 if options[:fl_f]
     output_format =  "fmt:%sa6 %pkt %byt %fl"
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}'  -A'%sa6' -o'#{output_format}' '%v6fl > 0 and %pkt 1' -P'%pkt >= 100' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}'  -A'%sa6' -o'#{output_format}' '%v6fl > 0 and %pkt 1' -P'%pkt >= 100' )
     output.lines.each do |line|
         (sa6, pkt, byt, fl) = line.split
-        output2 = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' -A'%sa6,%da6' '%pkt 1 and %sa6 #{sa6}' | grep "#{sa6}" )
+        output2 = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' -A'%sa6,%da6prf' '%v6fl > 0 and %pkt 1 and %sa6 #{sa6}' | grep "#{sa6}" )
         if output2.lines.length >= pkt.to_i # pkt == fl in the original query
-            puts "suspicious traffic from #{sa6}, #{pkt} packets in #{fl} flows, second query gave #{output2.lines.length} records"
+            puts "FL_F suspicious traffic from #{sa6}, #{pkt} packets in #{fl} flows, second query gave #{output2.lines.length} records"
         end
     end
 end
@@ -133,13 +120,15 @@ end
 if options[:cctc]
     extra_element =  '%v6tc'
     output_format =  "fmt:%sa6 %da6 %srcport %dstport %proto %fl %pkt"
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}'  -o'#{output_format}' '%v6tc > 0 and not %proto IPv6-Frag' -P'%pkt >= 100' -A'%sa6,%da6,%srcport,%dstport,%proto')
+    # the post-aggr filter fl >= 100 selects flows that consist of more than 100 flow records, thus something other than the -A fields differs for each of the flow records
+    # this was %pkt before, but %fl is more efficient: it makes sure there was something different from the fields in the -A
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}'  -o'#{output_format}' '%v6tc > 0 and not %proto IPv6-Frag' -P'%fl >= 50' -A'%sa6,%da6,%srcport,%dstport,%proto')
     output.lines.each do |line|
         (sa6, da6, sp, dp, pr, fl) = line.split
-        output2 = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}'  -A'%sa6,%da6,%srcport,%dstport,%proto,#{extra_element}' -o'#{output_format}' '%sa6 #{sa6} and %da6 #{da6} and %srcport #{sp} and %dstport #{dp} and %proto #{pr}')
+        output2 = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}'  -A'%sa6,%da6,%srcport,%dstport,%proto,#{extra_element}' -o'#{output_format} #{extra_element}' '%sa6 #{sa6} and %da6 #{da6} and %srcport #{sp} and %dstport #{dp} and %proto #{pr}' | grep "#{sa6}[[:space:]]*#{da6}")
 
         if output2.lines.length > 10
-            puts "#{sa6} -> #{da6} #{fl} vs #{output2.lines.length}"
+            puts "CCTC #{sa6} -> #{da6} #{fl} vs #{output2.lines.length}"
             puts output2.lines
             puts "-"*20
         end
@@ -148,37 +137,36 @@ if options[:cctc]
 end
 
 if options[:frag_f]
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' '%proto 44 and %pkt >= 200 and %pps > 5' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' '%proto 44 and %pkt >= 500 and %td < 5000 ' )
     output.lines.each do |line|
-        puts line
+        puts "FRAG_F #{line}"
     end
 
     # in case of 'spread' attack, towards generated addresses
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' -A'%sa6' -o'fmt:%sa6,%pkt,%pps' '%proto 44 and %pkt 1' -P'%pkt >= 200 and %pps > 5' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' -A'%sa6' -o'fmt:%td,%sa6,%pkt,%pps' '%proto 44 and %pkt 1' -P'%pkt >= 200 and %td < 5000' )
     output.lines.each do |line|
-        puts "SPREAD: #{line}"
+        puts "FRAG_F SPREAD: #{line}"
     end
 end
 
 if options[:hopopt_f]
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' '%proto 0 and %pkt >= 10' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' '%proto 0'  -A'%sa6,%da6,%srcport,%dstport,%proto' -P'%pkt > 10' )
     output.lines.each do |line|
-        puts line
+        puts "HOPOPT_F #{line}"
     end
 
     # Spread version
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' -A'%sa6' -o'fmt:%sa6,%pkt,%pps' '%proto 0' -P'%pkt >= 10 and %pps > 5' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' -A'%sa6' -o'fmt:%sa6,%pkt,%pps' '%proto 0 and %pkt 1' -P'%pkt >= 10' )
     output.lines.each do |line|
-        puts "SPREAD: #{line}"
+        puts "HOPOPT_F SPREAD: #{line}"
     end
 end
 
 
 if options[:frag_o]
     output_format =  "fmt:%sa6 %da6 %srcport %dstport %proto %fl %v6fragoverlap %v6fragminoffset %v6fragnxt %v6fragnxtsrc %v6fragnxtdst"
-    #output = %x(#{FBITDUMP} -q -C ~/fbitdump_frag6.xml -R '#{options[:input_dir]}' -o'#{output_format}' '%proto 44 and exists %v6fragoverlap' ) # needs packet reordering at flow exporter
-    output = %x(#{FBITDUMP} -q -C #{FBITDUMP_XML} -R '#{options[:input_dir]}' -o'#{output_format}' '%proto 44 and %v6fragminoffset > 0 and %v6fragminoffset < 20' )
+    output = %x(#{FBITDUMP} -q -C ~/fbitdump.xml -R '#{options[:input_dir]}' -o'#{output_format}' '%proto 44 and %v6fragminoffset > 0 and %v6fragminoffset < 20' )
     output.lines.each do |line|
-        puts line
+        puts "FRAG_O #{line}"
     end
 end
